@@ -234,18 +234,144 @@ public partial class ClaudeService : IAIService
 
 User strategy: {description}
 
-Rules:
+AVAILABLE INDICATORS:
+
+1. PRICE & VOLUME:
+   - price/close, open, high, low, volume, vwap
+
+2. MOVING AVERAGES:
+   - ema9, ema20, ema50 (pre-calculated EMAs)
+
+3. MOMENTUM:
+   - rsi (Relative Strength Index, 0-100)
+   - macd_line (MACD line)
+   - macd_signal (MACD signal line)
+   - macd_histogram (MACD histogram)
+   - stoch_k (Stochastic %K oscillator, 0-100)
+   - stoch_d (Stochastic %D oscillator, 0-100)
+   - williams_r (Williams %R, -100 to 0)
+   - cci (Commodity Channel Index)
+
+4. VOLATILITY & TRENDS:
+   - bb_upper (Bollinger Band upper)
+   - bb_middle (Bollinger Band middle/SMA)
+   - bb_lower (Bollinger Band lower)
+   - atr (Average True Range)
+   - adx (Average Directional Index, 0-100)
+   - psar (Parabolic SAR)
+
+5. VOLUME INDICATORS:
+   - obv (On-Balance Volume)
+   - avgVolume20 (20-bar average volume)
+
+6. ICHIMOKU CLOUD:
+   - ichimoku_tenkan (Conversion Line)
+   - ichimoku_kijun (Base Line)
+   - ichimoku_senkou_a (Leading Span A)
+   - ichimoku_senkou_b (Leading Span B)
+   - ichimoku_chikou (Lagging Span)
+
+7. TIME & LEVELS:
+   - time (minutes since midnight)
+   - prev_day_high, prev_day_low
+
+OPERATORS:
+- Comparison: >, <, >=, <=, ==
+- Crossovers: crosses_above, crosses_below (for dynamic conditions)
+
+EXAMPLE STRATEGIES:
+
+Example 1 - Bollinger Band Breakout:
+""Buy when price closes above the upper Bollinger Band with strong volume""
+{{
+  'entry_conditions': [
+    {{'indicator': 'price', 'operator': 'crosses_above', 'value': 'bb_upper'}},
+    {{'indicator': 'volume', 'operator': '>', 'value': '1.5x_avgVolume20'}}
+  ],
+  'stop_loss': {{'type': 'points', 'value': 15}},
+  'take_profit': {{'type': 'points', 'value': 30}},
+  'direction': 'long'
+}}
+
+Example 2 - MACD Crossover:
+""Go long when MACD line crosses above signal line and histogram is positive""
+{{
+  'entry_conditions': [
+    {{'indicator': 'macd_line', 'operator': 'crosses_above', 'value': 'macd_signal'}},
+    {{'indicator': 'macd_histogram', 'operator': '>', 'value': '0'}}
+  ],
+  'stop_loss': {{'type': 'points', 'value': 12}},
+  'take_profit': {{'type': 'points', 'value': 25}},
+  'direction': 'long'
+}}
+
+Example 3 - Stochastic Oversold:
+""Buy when Stochastic is oversold and %K crosses above %D""
+{{
+  'entry_conditions': [
+    {{'indicator': 'stoch_k', 'operator': '<', 'value': '20'}},
+    {{'indicator': 'stoch_k', 'operator': 'crosses_above', 'value': 'stoch_d'}}
+  ],
+  'stop_loss': {{'type': 'points', 'value': 10}},
+  'take_profit': {{'type': 'points', 'value': 20}},
+  'direction': 'long'
+}}
+
+Example 4 - Ichimoku Cloud Breakout:
+""Enter long when price breaks above the cloud""
+{{
+  'entry_conditions': [
+    {{'indicator': 'price', 'operator': '>', 'value': 'ichimoku_senkou_a'}},
+    {{'indicator': 'price', 'operator': '>', 'value': 'ichimoku_senkou_b'}},
+    {{'indicator': 'ichimoku_tenkan', 'operator': 'crosses_above', 'value': 'ichimoku_kijun'}}
+  ],
+  'stop_loss': {{'type': 'points', 'value': 20}},
+  'take_profit': {{'type': 'points', 'value': 40}},
+  'direction': 'long'
+}}
+
+Example 5 - Mean Reversion with CCI:
+""Short when CCI is overbought above 100 and price is above upper Bollinger Band""
+{{
+  'entry_conditions': [
+    {{'indicator': 'cci', 'operator': '>', 'value': '100'}},
+    {{'indicator': 'price', 'operator': '>', 'value': 'bb_upper'}}
+  ],
+  'stop_loss': {{'type': 'points', 'value': 15}},
+  'take_profit': {{'type': 'points', 'value': 30}},
+  'direction': 'short'
+}}
+
+Example 6 - Trend Following with ADX:
+""Go long when ADX shows strong trend and price is above EMA20""
+{{
+  'entry_conditions': [
+    {{'indicator': 'adx', 'operator': '>', 'value': '25'}},
+    {{'indicator': 'price', 'operator': '>', 'value': 'ema20'}},
+    {{'indicator': 'ema9', 'operator': '>', 'value': 'ema50'}}
+  ],
+  'stop_loss': {{'type': 'points', 'value': 18}},
+  'take_profit': {{'type': 'points', 'value': 35}},
+  'direction': 'long'
+}}
+
+PARSING RULES:
 - Only return valid JSON (no markdown, no explanation)
 - Infer missing details with reasonable defaults
 - If ambiguous, assume most common interpretation
 - Set direction based on keywords (long/buy vs short/sell)
 - Default stop loss: 10 points, take profit: 20 points if not specified
+- Use indicator names EXACTLY as shown above (case-insensitive)
+- For crossovers, use 'crosses_above' or 'crosses_below' operators
+- For numeric thresholds with indicators, use comparison operators (>, <, etc.)
 
-IMPORTANT - Value Format Rules:
+VALUE FORMAT RULES:
 - For multiplier expressions, use format 'Xx_indicator' (NOT 'X * indicator')
   Examples: '1.5x_average', '0.8x_vwap', '2.0x_avgVolume20'
-- Valid indicators: price, volume, vwap, ema9, ema20, ema50, avgVolume20
-- For average volume comparisons, use 'avgVolume20' or '1.5x_average' format
+- For comparing two indicators directly, use indicator name as value
+  Example: {{'indicator': 'price', 'operator': '>', 'value': 'ema20'}}
+- For numeric thresholds, use plain numbers
+  Example: {{'indicator': 'rsi', 'operator': '<', 'value': '30'}}
 - Never use spaces or multiplication operators (*) in value expressions
 - Use underscores to connect multipliers: '1.5x_average' NOT '1.5 * average'";
     }

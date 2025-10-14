@@ -59,6 +59,11 @@ public class TradingDbContext : DbContext
     public DbSet<TradeResult> TradeResults { get; set; }
 
     /// <summary>
+    /// Detailed analyses of individual trades with AI insights.
+    /// </summary>
+    public DbSet<TradeAnalysis> TradeAnalyses { get; set; }
+
+    /// <summary>
     /// Strategy evaluation errors for debugging and analysis.
     /// </summary>
     public DbSet<StrategyError> StrategyErrors { get; set; }
@@ -78,6 +83,7 @@ public class TradingDbContext : DbContext
         ConfigureTakeProfit(modelBuilder);
         ConfigureStrategyResult(modelBuilder);
         ConfigureTradeResult(modelBuilder);
+        ConfigureTradeAnalysis(modelBuilder);
         ConfigureStrategyError(modelBuilder);
     }
 
@@ -318,6 +324,49 @@ public class TradingDbContext : DbContext
 
             entity.HasIndex(e => new { e.StrategyResultId, e.Result, e.Pnl })
                 .HasDatabaseName("ix_trade_results_strategy_result_id_result_pnl");
+        });
+    }
+
+    /// <summary>
+    /// Configures the TradeAnalysis entity.
+    /// </summary>
+    private void ConfigureTradeAnalysis(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<TradeAnalysis>(entity =>
+        {
+            // Primary key
+            entity.HasKey(e => e.Id);
+
+            // Unique index on TradeResultId (one-to-one relationship)
+            entity.HasIndex(e => e.TradeResultId)
+                .IsUnique()
+                .HasDatabaseName("ix_trade_analyses_trade_result_id");
+
+            // Index on market condition for analysis queries
+            entity.HasIndex(e => e.MarketCondition)
+                .HasDatabaseName("ix_trade_analyses_market_condition");
+
+            // Index on time of day for pattern analysis
+            entity.HasIndex(e => e.TimeOfDay)
+                .HasDatabaseName("ix_trade_analyses_time_of_day");
+
+            // Index on day of week
+            entity.HasIndex(e => e.DayOfWeek)
+                .HasDatabaseName("ix_trade_analyses_day_of_week");
+
+            // Composite index for multi-dimensional analysis
+            entity.HasIndex(e => new { e.MarketCondition, e.TimeOfDay })
+                .HasDatabaseName("ix_trade_analyses_condition_time");
+
+            // Default value for CreatedAt
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("NOW()");
+
+            // One-to-one relationship with TradeResult
+            entity.HasOne(e => e.TradeResult)
+                .WithOne(t => t.Analysis)
+                .HasForeignKey<TradeAnalysis>(e => e.TradeResultId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

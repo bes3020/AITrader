@@ -5,6 +5,11 @@ import type {
   RefineStrategyRequest,
   Strategy,
   SymbolInfo,
+  TradeListResponse,
+  TradeDetailResponse,
+  TradePattern,
+  HeatmapData,
+  TradeFilters,
 } from "./types";
 
 /**
@@ -312,6 +317,161 @@ class TradingStrategyApiClient {
       console.log("[API Client] Strategy deleted successfully:", id);
     } catch (error) {
       console.error("[API Client] deleteStrategy failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets a paginated list of trades for a strategy result
+   * @param strategyId - Strategy ID
+   * @param resultId - Strategy result ID
+   * @param filters - Optional filters for result, pagination, and sorting
+   * @returns Paginated trade list with summary statistics
+   */
+  public async getTrades(
+    strategyId: number,
+    resultId: number,
+    filters?: TradeFilters
+  ): Promise<TradeListResponse> {
+    try {
+      console.log("[API Client] Fetching trades:", {
+        strategyId,
+        resultId,
+        filters,
+      });
+
+      const params: Record<string, string | number> = {
+        page: filters?.page || 1,
+        pageSize: filters?.pageSize || 20,
+        sortBy: filters?.sortBy || "entryTime",
+      };
+
+      if (filters?.result) {
+        params.result = filters.result;
+      }
+
+      const response = await this.client.get<TradeListResponse>(
+        `/api/strategy/${strategyId}/results/${resultId}/trades`,
+        { params }
+      );
+
+      console.log("[API Client] Trades retrieved:", {
+        count: response.data.trades.length,
+        totalCount: response.data.totalCount,
+        page: response.data.page,
+        totalPages: response.data.totalPages,
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] getTrades failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets detailed information about a specific trade
+   * @param strategyId - Strategy ID
+   * @param resultId - Strategy result ID
+   * @param tradeId - Trade ID
+   * @returns Trade detail with analysis, chart data, and indicator series
+   */
+  public async getTradeDetail(
+    strategyId: number,
+    resultId: number,
+    tradeId: number
+  ): Promise<TradeDetailResponse> {
+    try {
+      console.log("[API Client] Fetching trade detail:", {
+        strategyId,
+        resultId,
+        tradeId,
+      });
+
+      const response = await this.client.get<TradeDetailResponse>(
+        `/api/strategy/${strategyId}/results/${resultId}/trades/${tradeId}`
+      );
+
+      console.log("[API Client] Trade detail retrieved:", {
+        tradeId,
+        entryTime: response.data.trade.entryTime,
+        pnl: response.data.trade.pnl,
+        hasAnalysis: !!response.data.analysis,
+        chartDataPoints: response.data.chartData?.length || 0,
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] getTradeDetail failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets identified patterns across all trades in a result
+   * @param strategyId - Strategy ID
+   * @param resultId - Strategy result ID
+   * @returns List of trade patterns with frequency and impact
+   */
+  public async getTradePatterns(
+    strategyId: number,
+    resultId: number
+  ): Promise<TradePattern[]> {
+    try {
+      console.log("[API Client] Fetching trade patterns:", {
+        strategyId,
+        resultId,
+      });
+
+      const response = await this.client.get<TradePattern[]>(
+        `/api/strategy/${strategyId}/results/${resultId}/patterns`
+      );
+
+      console.log("[API Client] Trade patterns retrieved:", {
+        count: response.data.length,
+        patterns: response.data.map((p) => p.name).join(", "),
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] getTradePatterns failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets heatmap data for trade performance by dimension
+   * @param strategyId - Strategy ID
+   * @param resultId - Strategy result ID
+   * @param dimension - Dimension to analyze (hour, dayOfWeek, duration, marketCondition)
+   * @returns Heatmap data with cells colored by performance
+   */
+  public async getHeatmap(
+    strategyId: number,
+    resultId: number,
+    dimension: string = "hour"
+  ): Promise<HeatmapData> {
+    try {
+      console.log("[API Client] Fetching heatmap:", {
+        strategyId,
+        resultId,
+        dimension,
+      });
+
+      const response = await this.client.get<HeatmapData>(
+        `/api/strategy/${strategyId}/results/${resultId}/heatmap`,
+        { params: { dimension } }
+      );
+
+      console.log("[API Client] Heatmap retrieved:", {
+        dimension: response.data.dimension,
+        label: response.data.label,
+        cellCount: response.data.cells.length,
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] getHeatmap failed:", error);
       throw error;
     }
   }

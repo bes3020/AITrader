@@ -1,18 +1,35 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { History } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { StrategyForm } from "@/components/StrategyForm";
 
 export default function Home() {
+  const router = useRouter();
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-background to-muted/20 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl mb-4">
-            Trading Strategy Analyzer
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <div className="flex items-center justify-center mb-4">
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+              Trading Strategy Analyzer
+            </h1>
+          </div>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-6">
             Analyze your trading strategies with AI-powered insights. Describe your strategy in plain English
             and get instant backtesting results with detailed performance metrics.
           </p>
+          <Button
+            onClick={() => router.push("/history")}
+            variant="outline"
+            size="lg"
+          >
+            <History className="mr-2 h-5 w-5" />
+            View Strategy History
+          </Button>
         </div>
 
         {/* Strategy Form */}

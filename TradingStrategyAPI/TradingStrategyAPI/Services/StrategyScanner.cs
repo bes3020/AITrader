@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using TradingStrategyAPI.Models;
 
 namespace TradingStrategyAPI.Services;
@@ -101,11 +102,15 @@ public class StrategyScanner : IStrategyScanner
                     _logger.LogInformation("Entry signal detected at {Timestamp} (Price: {Price})",
                         currentBar.Timestamp, currentBar.Close);
 
+                    // Get setup bars (20 bars before entry for context)
+                    var setupStartIndex = Math.Max(0, i - 20);
+                    var setupBars = bars.Skip(setupStartIndex).Take(i - setupStartIndex).ToList();
+
                     // Get future bars for trade simulation
                     var futureBars = bars.Skip(i + 1).Take(MaxBarsInTrade).ToList();
 
-                    // Simulate the trade with symbol-specific multipliers
-                    var trade = SimulateTrade(strategy, currentBar, futureBars, pointMultiplier, slippageCost);
+                    // Simulate the trade with symbol-specific multipliers and capture context
+                    var trade = SimulateTrade(strategy, currentBar, historicalBars, setupBars, futureBars, pointMultiplier, slippageCost);
 
                     if (trade != null)
                     {
@@ -138,10 +143,12 @@ public class StrategyScanner : IStrategyScanner
     /// </summary>
     /// <param name="strategy">The trading strategy</param>
     /// <param name="entryBar">The bar at which entry occurs</param>
+    /// <param name="historicalBars">All historical bars up to entry (for indicator calculation)</param>
+    /// <param name="setupBars">Setup context bars (typically 20 bars before entry)</param>
     /// <param name="futureBars">Future bars for trade simulation</param>
     /// <param name="pointMultiplier">Dollar value per point move for this symbol</param>
     /// <param name="slippageCost">Total slippage cost (2 ticks) for this symbol</param>
-    private TradeResult? SimulateTrade(Strategy strategy, Bar entryBar, List<Bar> futureBars, decimal pointMultiplier, decimal slippageCost)
+    private TradeResult? SimulateTrade(Strategy strategy, Bar entryBar, List<Bar> historicalBars, List<Bar> setupBars, List<Bar> futureBars, decimal pointMultiplier, decimal slippageCost)
     {
         try
         {
@@ -265,6 +272,16 @@ public class StrategyScanner : IStrategyScanner
             // Subtract commission
             pnl -= Commission;
 
+            // Capture trade bars (bars during the trade)
+            var tradeBarsData = futureBars.Take(barsHeld).ToList();
+
+            // Calculate risk/reward ratio
+            var stopDistance = Math.Abs(entryPrice - stopPrice);
+            var riskRewardRatio = stopDistance > 0 ? Math.Abs(pnl) / (stopDistance * pointMultiplier) : 0;
+
+            // Calculate indicator values at entry and exit
+            var indicatorValues = CaptureIndicatorValues(historicalBars, entryBar, tradeBarsData.LastOrDefault());
+
             // Create trade result
             var trade = new TradeResult
             {
@@ -278,7 +295,15 @@ public class StrategyScanner : IStrategyScanner
                 Result = exitReason,
                 BarsHeld = barsHeld,
                 MaxAdverseExcursion = mae,
-                MaxFavorableExcursion = mfe
+                MaxFavorableExcursion = mfe,
+                ChartDataStart = setupBars.FirstOrDefault()?.Timestamp,
+                ChartDataEnd = tradeBarsData.LastOrDefault()?.Timestamp ?? entryBar.Timestamp,
+                EntryBarIndex = setupBars.Count, // Entry is right after setup bars
+                ExitBarIndex = setupBars.Count + barsHeld,
+                SetupBars = SerializeBars(setupBars),
+                TradeBars = SerializeBars(tradeBarsData),
+                IndicatorValues = indicatorValues,
+                RiskRewardRatio = riskRewardRatio
             };
 
             return trade;
@@ -316,5 +341,127 @@ public class StrategyScanner : IStrategyScanner
             "atr" => entryBar.Close * takeProfit.Value * 0.01m, // Assume ATR is percentage-based
             _ => takeProfit.Value // Default to points
         };
+    }
+
+    /// <summary>
+    /// Serializes bars to compact JSON format for storage.
+    /// </summary>
+    private string? SerializeBars(List<Bar> bars)
+    {
+        if (bars == null || bars.Count == 0)
+            return null;
+
+        try
+        {
+            // Create simplified bar objects to reduce storage
+            var simplifiedBars = bars.Select(b => new
+            {
+                t = b.Timestamp,
+                o = b.Open,
+                h = b.High,
+                l = b.Low,
+                c = b.Close,
+                v = b.Volume
+            }).ToList();
+
+            return JsonSerializer.Serialize(simplifiedBars);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error serializing bars");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Captures indicator values at entry and exit for analysis.
+    /// </summary>
+    private string? CaptureIndicatorValues(List<Bar> historicalBars, Bar entryBar, Bar? exitBar)
+    {
+        try
+        {
+            var indicators = new Dictionary<string, Dictionary<string, decimal>>();
+
+            // Calculate indicators at entry
+            var entryIndicators = new Dictionary<string, decimal>
+            {
+                ["price"] = entryBar.Close,
+                ["volume"] = entryBar.Volume
+            };
+
+            // Calculate common indicators if we have enough historical data
+            if (historicalBars.Count >= 50)
+            {
+                entryIndicators["ema9"] = CalculateEMA(historicalBars, 9);
+                entryIndicators["ema20"] = CalculateEMA(historicalBars, 20);
+                entryIndicators["ema50"] = CalculateEMA(historicalBars, 50);
+                entryIndicators["vwap"] = CalculateVWAP(historicalBars);
+                entryIndicators["avgVolume20"] = (decimal)historicalBars.TakeLast(20).Average(b => b.Volume);
+            }
+
+            indicators["entry"] = entryIndicators;
+
+            // Calculate indicators at exit if available
+            if (exitBar != null)
+            {
+                var exitIndicators = new Dictionary<string, decimal>
+                {
+                    ["price"] = exitBar.Close,
+                    ["volume"] = exitBar.Volume
+                };
+
+                indicators["exit"] = exitIndicators;
+            }
+
+            return JsonSerializer.Serialize(indicators);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error capturing indicator values");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Calculates Exponential Moving Average.
+    /// </summary>
+    private decimal CalculateEMA(List<Bar> bars, int period)
+    {
+        if (bars.Count < period)
+            return bars.Last().Close;
+
+        var multiplier = 2m / (period + 1);
+        var recentBars = bars.TakeLast(period * 2).ToList(); // Take extra bars for accuracy
+
+        // Start with SMA
+        var ema = recentBars.Take(period).Average(b => b.Close);
+
+        // Calculate EMA
+        for (int i = period; i < recentBars.Count; i++)
+        {
+            ema = (recentBars[i].Close - ema) * multiplier + ema;
+        }
+
+        return ema;
+    }
+
+    /// <summary>
+    /// Calculates Volume Weighted Average Price for the trading day.
+    /// </summary>
+    private decimal CalculateVWAP(List<Bar> bars)
+    {
+        // VWAP resets each day, so calculate for current day only
+        var currentDay = bars.Last().Timestamp.Date;
+        var todayBars = bars.Where(b => b.Timestamp.Date == currentDay).ToList();
+
+        if (todayBars.Count == 0)
+            return bars.Last().Close;
+
+        var totalVolume = todayBars.Sum(b => b.Volume);
+        if (totalVolume == 0)
+            return bars.Last().Close;
+
+        var vwap = todayBars.Sum(b => ((b.High + b.Low + b.Close) / 3m) * b.Volume) / totalVolume;
+        return vwap;
     }
 }

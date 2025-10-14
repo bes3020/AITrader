@@ -114,6 +114,7 @@ builder.Services.AddSingleton<IAIService>(sp =>
 builder.Services.AddScoped<IStrategyEvaluator, StrategyEvaluator>();
 builder.Services.AddScoped<IStrategyScanner, StrategyScanner>();
 builder.Services.AddScoped<IResultsAnalyzer, ResultsAnalyzer>();
+builder.Services.AddScoped<ITradeAnalyzer, TradeAnalyzer>();
 
 var app = builder.Build();
 

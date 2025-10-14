@@ -447,6 +447,102 @@ namespace TradingStrategyAPI.Database.Migrations
                     b.ToTable("take_profits");
                 });
 
+            modelBuilder.Entity("TradingStrategyAPI.Models.TradeAnalysis", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("AdxValue")
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("adx_value");
+
+                    b.Property<decimal?>("AtrValue")
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("atr_value");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("DayOfWeek")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("day_of_week");
+
+                    b.Property<string>("EntryReason")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("entry_reason");
+
+                    b.Property<string>("ExitReason")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("exit_reason");
+
+                    b.Property<string>("LessonsLearned")
+                        .HasColumnType("text")
+                        .HasColumnName("lessons_learned");
+
+                    b.Property<string>("MarketCondition")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("market_condition");
+
+                    b.Property<string>("Narrative")
+                        .HasColumnType("text")
+                        .HasColumnName("narrative");
+
+                    b.Property<string>("TimeOfDay")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("time_of_day");
+
+                    b.Property<int>("TradeResultId")
+                        .HasColumnType("integer")
+                        .HasColumnName("trade_result_id");
+
+                    b.Property<decimal?>("VixLevel")
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("vix_level");
+
+                    b.Property<string>("WhatWentRight")
+                        .HasColumnType("text")
+                        .HasColumnName("what_went_right");
+
+                    b.Property<string>("WhatWentWrong")
+                        .HasColumnType("text")
+                        .HasColumnName("what_went_wrong");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DayOfWeek")
+                        .HasDatabaseName("ix_trade_analyses_day_of_week");
+
+                    b.HasIndex("MarketCondition")
+                        .HasDatabaseName("ix_trade_analyses_market_condition");
+
+                    b.HasIndex("TimeOfDay")
+                        .HasDatabaseName("ix_trade_analyses_time_of_day");
+
+                    b.HasIndex("TradeResultId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_trade_analyses_trade_result_id");
+
+                    b.HasIndex("MarketCondition", "TimeOfDay")
+                        .HasDatabaseName("ix_trade_analyses_condition_time");
+
+                    b.ToTable("trade_analyses");
+                });
+
             modelBuilder.Entity("TradingStrategyAPI.Models.TradeResult", b =>
                 {
                     b.Property<int>("Id")
@@ -460,21 +556,49 @@ namespace TradingStrategyAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("bars_held");
 
+                    b.Property<DateTime?>("ChartDataEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("chart_data_end");
+
+                    b.Property<DateTime?>("ChartDataStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("chart_data_start");
+
+                    b.Property<int?>("EntryBarIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("entry_bar_index");
+
                     b.Property<decimal>("EntryPrice")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("entry_price");
+
+                    b.Property<int?>("EntryQualityScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("entry_quality_score");
 
                     b.Property<DateTime>("EntryTime")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("entry_time");
 
+                    b.Property<int?>("ExitBarIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("exit_bar_index");
+
                     b.Property<decimal?>("ExitPrice")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("exit_price");
 
+                    b.Property<int?>("ExitQualityScore")
+                        .HasColumnType("integer")
+                        .HasColumnName("exit_quality_score");
+
                     b.Property<DateTime?>("ExitTime")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("exit_time");
+
+                    b.Property<string>("IndicatorValues")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("indicator_values");
 
                     b.Property<decimal>("MaxAdverseExcursion")
                         .HasColumnType("decimal(18,2)")
@@ -494,9 +618,25 @@ namespace TradingStrategyAPI.Database.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("result");
 
+                    b.Property<decimal?>("RiskRewardRatio")
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("risk_reward_ratio");
+
+                    b.Property<string>("SetupBars")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("setup_bars");
+
                     b.Property<int>("StrategyResultId")
                         .HasColumnType("integer")
                         .HasColumnName("strategy_result_id");
+
+                    b.Property<string>("TradeBars")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("trade_bars");
+
+                    b.Property<string>("TradeNotes")
+                        .HasColumnType("text")
+                        .HasColumnName("trade_notes");
 
                     b.HasKey("Id");
 
@@ -616,6 +756,17 @@ namespace TradingStrategyAPI.Database.Migrations
                     b.Navigation("Strategy");
                 });
 
+            modelBuilder.Entity("TradingStrategyAPI.Models.TradeAnalysis", b =>
+                {
+                    b.HasOne("TradingStrategyAPI.Models.TradeResult", "TradeResult")
+                        .WithOne("Analysis")
+                        .HasForeignKey("TradingStrategyAPI.Models.TradeAnalysis", "TradeResultId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TradeResult");
+                });
+
             modelBuilder.Entity("TradingStrategyAPI.Models.TradeResult", b =>
                 {
                     b.HasOne("TradingStrategyAPI.Models.StrategyResult", "StrategyResult")
@@ -641,6 +792,11 @@ namespace TradingStrategyAPI.Database.Migrations
             modelBuilder.Entity("TradingStrategyAPI.Models.StrategyResult", b =>
                 {
                     b.Navigation("AllTrades");
+                });
+
+            modelBuilder.Entity("TradingStrategyAPI.Models.TradeResult", b =>
+                {
+                    b.Navigation("Analysis");
                 });
 
             modelBuilder.Entity("TradingStrategyAPI.Models.User", b =>

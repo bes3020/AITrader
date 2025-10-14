@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, List, BarChart3, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResultsSummary } from "@/components/ResultsSummary";
 import { WorstTradesSection } from "@/components/WorstTradesSection";
@@ -143,14 +143,22 @@ export default function ResultsPage({ params }: ResultsPageProps) {
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <Button
-            onClick={() => router.push("/")}
-            variant="ghost"
-            className="mb-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Analyzer
-          </Button>
+          <div className="flex gap-2 mb-4">
+            <Button
+              onClick={() => router.push("/")}
+              variant="ghost"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Analyzer
+            </Button>
+            <Button
+              onClick={() => router.push("/history")}
+              variant="ghost"
+            >
+              <History className="mr-2 h-4 w-4" />
+              Strategy History
+            </Button>
+          </div>
 
           <div className="flex items-start justify-between">
             <div>
@@ -169,6 +177,32 @@ export default function ResultsPage({ params }: ResultsPageProps) {
                   {result.totalTrades} trades
                 </span>
               </div>
+            </div>
+
+            {/* NEW: Trade Analysis Actions */}
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() =>
+                  router.push(
+                    `/strategies/${strategy.id}/results/${result.id}/trades`
+                  )
+                }
+                variant="default"
+              >
+                <List className="mr-2 h-4 w-4" />
+                View All Trades
+              </Button>
+              <Button
+                onClick={() =>
+                  router.push(
+                    `/strategies/${strategy.id}/results/${result.id}/heatmap`
+                  )
+                }
+                variant="outline"
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Performance Heatmap
+              </Button>
             </div>
           </div>
         </div>

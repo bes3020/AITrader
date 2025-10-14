@@ -3,19 +3,26 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { format, subMonths } from "date-fns";
-import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2, Lightbulb, Layers } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import apiClient, { ApiClientError } from "@/lib/api-client";
 import type { AnalyzeStrategyRequest } from "@/lib/types";
 import { SymbolSelector } from "./SymbolSelector";
+import { VisualConditionBuilder, type Condition } from "./indicators/VisualConditionBuilder";
+import { IndicatorLibrary } from "./indicators/IndicatorLibrary";
+import { IndicatorDetailPanel } from "./indicators/IndicatorDetailPanel";
+import { IndicatorPresets } from "./indicators/IndicatorPresets";
+import type { IndicatorDefinition, IndicatorPreset } from "@/lib/indicator-definitions";
 
 interface StrategyFormProps {
   /**
@@ -39,6 +46,15 @@ export function StrategyForm({ onAnalysisStart, onAnalysisComplete }: StrategyFo
     from: subMonths(new Date(), 6),
     to: new Date(),
   });
+  const [mode, setMode] = useState<"text" | "visual">("text");
+  const [conditions, setConditions] = useState<Condition[]>([]);
+  const [stopLoss, setStopLoss] = useState<string>("10");
+  const [takeProfit, setTakeProfit] = useState<string>("20");
+  const [direction, setDirection] = useState<"long" | "short">("long");
+
+  // Visual builder UI state
+  const [selectedIndicator, setSelectedIndicator] = useState<IndicatorDefinition | null>(null);
+  const [showPresets, setShowPresets] = useState(false);
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -46,15 +62,67 @@ export function StrategyForm({ onAnalysisStart, onAnalysisComplete }: StrategyFo
   const [success, setSuccess] = useState(false);
 
   /**
+   * Converts visual conditions to natural language description
+   */
+  const convertConditionsToText = useCallback((): string => {
+    if (conditions.length === 0) {
+      return "";
+    }
+
+    const conditionTexts = conditions
+      .filter((c) => c.indicator && c.operator && c.value)
+      .map((c) => `${c.indicator} ${c.operator} ${c.value}`)
+      .join(" AND ");
+
+    return `${direction === "long" ? "Buy" : "Sell"} when ${conditionTexts}, with stop loss at ${stopLoss} points and take profit at ${takeProfit} points`;
+  }, [conditions, direction, stopLoss, takeProfit]);
+
+  /**
+   * Handles adding indicator from detail panel
+   */
+  const handleAddIndicatorCondition = useCallback(
+    (indicator: IndicatorDefinition, config?: Record<string, any>) => {
+      const newCondition: Condition = {
+        id: `condition-${Date.now()}`,
+        indicator: indicator.id,
+        operator: ">",
+        value: "",
+      };
+      setConditions([...conditions, newCondition]);
+      setSelectedIndicator(null);
+    },
+    [conditions]
+  );
+
+  /**
+   * Handles applying a preset
+   */
+  const handleApplyPreset = useCallback((preset: IndicatorPreset) => {
+    const newConditions: Condition[] = preset.indicators.map((indId, index) => ({
+      id: `condition-${Date.now()}-${index}`,
+      indicator: indId,
+      operator: ">",
+      value: "",
+    }));
+    setConditions(newConditions);
+    setShowPresets(false);
+  }, []);
+
+  /**
    * Validates form inputs before submission
    */
   const validateForm = useCallback((): string | null => {
+    // Get the description based on mode
+    const finalDescription = mode === "visual" ? convertConditionsToText() : description;
+
     // Validate description
-    if (!description.trim()) {
-      return "Please enter a strategy description";
+    if (!finalDescription.trim()) {
+      return mode === "visual"
+        ? "Please add at least one condition"
+        : "Please enter a strategy description";
     }
 
-    if (description.trim().length < 10) {
+    if (finalDescription.trim().length < 10) {
       return "Strategy description must be at least 10 characters";
     }
 
@@ -77,7 +145,7 @@ export function StrategyForm({ onAnalysisStart, onAnalysisComplete }: StrategyFo
     }
 
     return null;
-  }, [description, dateRange, symbol]);
+  }, [description, dateRange, symbol, mode, convertConditionsToText]);
 
   /**
    * Handles form submission
@@ -101,9 +169,12 @@ export function StrategyForm({ onAnalysisStart, onAnalysisComplete }: StrategyFo
         setLoading(true);
         onAnalysisStart?.();
 
+        // Get final description based on mode
+        const finalDescription = mode === "visual" ? convertConditionsToText() : description;
+
         // Prepare request
         const request: AnalyzeStrategyRequest = {
-          description: description.trim(),
+          description: finalDescription.trim(),
           symbol,
           startDate: dateRange!.from!.toISOString(),
           endDate: dateRange!.to!.toISOString(),
@@ -186,28 +257,133 @@ export function StrategyForm({ onAnalysisStart, onAnalysisComplete }: StrategyFo
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Strategy Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-base font-medium">
-              Strategy Description
-              <span className="text-destructive ml-1">*</span>
-            </Label>
-            <Textarea
-              id="description"
-              placeholder="Example: Buy when price crosses above VWAP and volume is greater than 1.5x average, with stop at 10 points and target at 20 points"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={loading}
-              rows={10}
-              className="resize-y text-base"
-              aria-required="true"
-              aria-invalid={!!error && !description.trim()}
-              aria-describedby="description-hint"
-            />
-            <p id="description-hint" className="text-sm text-muted-foreground">
-              Be specific about entry conditions, stop loss, and take profit levels
-            </p>
-          </div>
+          {/* Strategy Input Mode Tabs */}
+          <Tabs value={mode} onValueChange={(v) => setMode(v as "text" | "visual")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="text" className="flex items-center gap-2">
+                <Lightbulb className="h-4 w-4" />
+                Text Mode
+              </TabsTrigger>
+              <TabsTrigger value="visual" className="flex items-center gap-2">
+                <Layers className="h-4 w-4" />
+                Visual Builder
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Text Mode */}
+            <TabsContent value="text" className="space-y-2 mt-4">
+              <Label htmlFor="description" className="text-base font-medium">
+                Strategy Description
+                <span className="text-destructive ml-1">*</span>
+              </Label>
+              <Textarea
+                id="description"
+                placeholder="Example: Buy when price crosses above VWAP and volume is greater than 1.5x average, with stop at 10 points and target at 20 points"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={loading}
+                rows={10}
+                className="resize-y text-base"
+                aria-required="true"
+                aria-invalid={!!error && !description.trim()}
+                aria-describedby="description-hint"
+              />
+              <p id="description-hint" className="text-sm text-muted-foreground">
+                Be specific about entry conditions, stop loss, and take profit levels
+              </p>
+            </TabsContent>
+
+            {/* Visual Mode */}
+            <TabsContent value="visual" className="space-y-4 mt-4">
+              {/* Presets Section */}
+              {showPresets ? (
+                <div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPresets(false)}
+                    className="mb-4"
+                  >
+                    ← Back to Builder
+                  </Button>
+                  <IndicatorPresets onSelectPreset={handleApplyPreset} />
+                </div>
+              ) : (
+                <>
+                  {/* Quick Presets Button */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPresets(true)}
+                    className="w-full"
+                  >
+                    <Lightbulb className="mr-2 h-4 w-4" />
+                    Browse Strategy Presets
+                  </Button>
+
+                  {/* Direction & Exit Rules */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Direction</Label>
+                      <select
+                        value={direction}
+                        onChange={(e) => setDirection(e.target.value as "long" | "short")}
+                        className="w-full px-3 py-2 border rounded-md"
+                        disabled={loading}
+                      >
+                        <option value="long">Long (Buy)</option>
+                        <option value="short">Short (Sell)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Stop Loss (points)</Label>
+                      <Input
+                        type="number"
+                        value={stopLoss}
+                        onChange={(e) => setStopLoss(e.target.value)}
+                        disabled={loading}
+                        min="1"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Take Profit (points)</Label>
+                      <Input
+                        type="number"
+                        value={takeProfit}
+                        onChange={(e) => setTakeProfit(e.target.value)}
+                        disabled={loading}
+                        min="1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Conditions Builder */}
+                  <div>
+                    <Label className="text-base font-medium mb-3 block">
+                      Entry Conditions
+                      <span className="text-destructive ml-1">*</span>
+                    </Label>
+                    <VisualConditionBuilder
+                      conditions={conditions}
+                      onChange={setConditions}
+                    />
+                  </div>
+
+                  {/* Generated Description Preview */}
+                  {conditions.length > 0 && (
+                    <div className="p-4 bg-muted rounded-lg">
+                      <Label className="text-sm font-medium mb-2 block">
+                        Generated Strategy:
+                      </Label>
+                      <p className="text-sm">{convertConditionsToText()}</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
 
           {/* Symbol Selection */}
           <SymbolSelector

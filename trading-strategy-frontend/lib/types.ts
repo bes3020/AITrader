@@ -599,3 +599,117 @@ export interface User {
    */
   createdAt: string;
 }
+
+/**
+ * Detailed trade analysis with AI insights.
+ */
+export interface TradeAnalysis {
+  id: number;
+  tradeResultId: number;
+  entryReason: string;
+  exitReason: string;
+  marketCondition: string;
+  timeOfDay: string;
+  dayOfWeek: string;
+  vixLevel: number | null;
+  adxValue: number | null;
+  atrValue: number | null;
+  whatWentWrong: string | null;
+  whatWentRight: string | null;
+  narrative: string | null;
+  lessonsLearned: string | null;
+  createdAt: string;
+}
+
+/**
+ * Simplified bar data for charts.
+ */
+export interface BarData {
+  timestamp: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+/**
+ * Complete trade detail response with chart data and analysis.
+ */
+export interface TradeDetailResponse {
+  trade: TradeResult;
+  analysis: TradeAnalysis | null;
+  chartData: BarData[] | null;
+  indicatorSeries: Record<string, number[]> | null;
+}
+
+/**
+ * Trade list summary statistics.
+ */
+export interface TradeListSummary {
+  totalTrades: number;
+  wins: number;
+  losses: number;
+  timeouts: number;
+  totalPnl: number;
+  avgPnl: number;
+  winRate: number;
+  avgWin: number;
+  avgLoss: number;
+  largestWin: number;
+  largestLoss: number;
+}
+
+/**
+ * Paginated trade list response.
+ */
+export interface TradeListResponse {
+  trades: TradeResult[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  summary: TradeListSummary | null;
+}
+
+/**
+ * Identified pattern in trades.
+ */
+export interface TradePattern {
+  name: string;
+  description: string;
+  frequency: number;
+  avgImpact: number;
+  type: string;
+  confidence: number;
+}
+
+/**
+ * Heatmap cell data.
+ */
+export interface HeatmapCell {
+  label: string;
+  value: number;
+  count: number;
+  color: string;
+  tooltip: string | null;
+}
+
+/**
+ * Heatmap data for visualization.
+ */
+export interface HeatmapData {
+  dimension: string;
+  label: string;
+  cells: HeatmapCell[];
+}
+
+/**
+ * Trade list filters.
+ */
+export interface TradeFilters {
+  result?: "win" | "loss" | "timeout";
+  page?: number;
+  pageSize?: number;
+  sortBy?: "pnl" | "entryTime" | "duration";
+}

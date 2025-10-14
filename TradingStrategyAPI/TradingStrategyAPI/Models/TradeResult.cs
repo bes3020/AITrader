@@ -101,6 +101,83 @@ public class TradeResult
     public StrategyResult? StrategyResult { get; set; }
 
     /// <summary>
+    /// Start of chart data window (typically entry time - setup duration).
+    /// </summary>
+    [Column("chart_data_start")]
+    public DateTime? ChartDataStart { get; set; }
+
+    /// <summary>
+    /// End of chart data window (exit time or current time if still open).
+    /// </summary>
+    [Column("chart_data_end")]
+    public DateTime? ChartDataEnd { get; set; }
+
+    /// <summary>
+    /// Index of the entry bar in the chart data array.
+    /// </summary>
+    [Column("entry_bar_index")]
+    public int? EntryBarIndex { get; set; }
+
+    /// <summary>
+    /// Index of the exit bar in the chart data array.
+    /// </summary>
+    [Column("exit_bar_index")]
+    public int? ExitBarIndex { get; set; }
+
+    /// <summary>
+    /// JSON array of bars showing setup context (before entry).
+    /// Stores compact bar data to reduce storage.
+    /// </summary>
+    [Column("setup_bars", TypeName = "jsonb")]
+    public string? SetupBars { get; set; }
+
+    /// <summary>
+    /// JSON array of bars during the trade.
+    /// Stores compact bar data to reduce storage.
+    /// </summary>
+    [Column("trade_bars", TypeName = "jsonb")]
+    public string? TradeBars { get; set; }
+
+    /// <summary>
+    /// JSON object containing indicator values at entry and exit.
+    /// Example: {"entry": {"ema9": 4520.5, "vwap": 4518.2}, "exit": {"ema9": 4525.1, "vwap": 4523.8}}
+    /// </summary>
+    [Column("indicator_values", TypeName = "jsonb")]
+    public string? IndicatorValues { get; set; }
+
+    /// <summary>
+    /// AI-generated notes about this specific trade.
+    /// </summary>
+    [Column("trade_notes")]
+    public string? TradeNotes { get; set; }
+
+    /// <summary>
+    /// Entry quality score (0-100) based on setup conditions.
+    /// </summary>
+    [Column("entry_quality_score")]
+    [Range(0, 100)]
+    public int? EntryQualityScore { get; set; }
+
+    /// <summary>
+    /// Exit quality score (0-100) based on exit execution.
+    /// </summary>
+    [Column("exit_quality_score")]
+    [Range(0, 100)]
+    public int? ExitQualityScore { get; set; }
+
+    /// <summary>
+    /// Risk/reward ratio achieved (actual exit PnL / stop loss risk).
+    /// </summary>
+    [Column("risk_reward_ratio", TypeName = "decimal(10,2)")]
+    public decimal? RiskRewardRatio { get; set; }
+
+    /// <summary>
+    /// Navigation property to trade analysis.
+    /// </summary>
+    [JsonIgnore]
+    public TradeAnalysis? Analysis { get; set; }
+
+    /// <summary>
     /// Calculates the trade duration in minutes.
     /// </summary>
     public int? GetDurationMinutes()

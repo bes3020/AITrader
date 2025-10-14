@@ -9,11 +9,16 @@ namespace TradingStrategyAPI.Services;
 public class ResultsAnalyzer : IResultsAnalyzer
 {
     private readonly IAIService _aiService;
+    private readonly ITradeAnalyzer _tradeAnalyzer;
     private readonly ILogger<ResultsAnalyzer> _logger;
 
-    public ResultsAnalyzer(IAIService aiService, ILogger<ResultsAnalyzer> logger)
+    public ResultsAnalyzer(
+        IAIService aiService,
+        ITradeAnalyzer tradeAnalyzer,
+        ILogger<ResultsAnalyzer> logger)
     {
         _aiService = aiService;
+        _tradeAnalyzer = tradeAnalyzer;
         _logger = logger;
     }
 
@@ -59,8 +64,36 @@ public class ResultsAnalyzer : IResultsAnalyzer
             _logger.LogInformation("Statistics calculated: WinRate={WinRate:P2}, TotalPnL=${TotalPnl:F2}, ProfitFactor={ProfitFactor:F2}",
                 winRate, totalPnl, profitFactor);
 
+            // Calculate entry/exit quality scores for each trade
+            foreach (var trade in trades)
+            {
+                trade.EntryQualityScore = _tradeAnalyzer.CalculateEntryQualityScore(trade, strategy);
+                trade.ExitQualityScore = _tradeAnalyzer.CalculateExitQualityScore(trade);
+            }
+
             // Analyze loss patterns
             var lossPatterns = AnalyzeLossPatterns(losingTrades);
+
+            // Find patterns across all trades using TradeAnalyzer
+            List<string> patternInsights = new List<string>();
+            try
+            {
+                var patterns = await _tradeAnalyzer.FindPatternsAsync(trades);
+                var topPatterns = patterns.Take(5).ToList();
+
+                if (topPatterns.Any())
+                {
+                    patternInsights.Add("\n\nIdentified Patterns:");
+                    foreach (var pattern in topPatterns)
+                    {
+                        patternInsights.Add($"- {pattern.Description} (Confidence: {pattern.Confidence}%)");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error finding trade patterns");
+            }
 
             // Find worst trades
             var worstTrades = trades
@@ -84,11 +117,23 @@ public class ResultsAnalyzer : IResultsAnalyzer
                     avgLoss,
                     lossPatterns.hourDistribution,
                     worstTradesTotal);
+
+                // Append pattern insights
+                if (patternInsights.Any())
+                {
+                    insights += "\n\n" + string.Join("\n", patternInsights);
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating AI insights, using default message");
                 insights = GenerateDefaultInsights(totalTrades, winRate, totalPnl, losingTrades);
+
+                // Still append pattern insights even with default insights
+                if (patternInsights.Any())
+                {
+                    insights += "\n\n" + string.Join("\n", patternInsights);
+                }
             }
 
             // Determine backtest date range
