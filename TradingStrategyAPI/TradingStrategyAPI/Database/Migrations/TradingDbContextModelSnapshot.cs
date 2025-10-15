@@ -100,6 +100,10 @@ namespace TradingStrategyAPI.Database.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("CustomIndicatorId")
+                        .HasColumnType("integer")
+                        .HasColumnName("custom_indicator_id");
+
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -129,6 +133,9 @@ namespace TradingStrategyAPI.Database.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CustomIndicatorId")
+                        .HasDatabaseName("ix_conditions_custom_indicator_id");
+
                     b.HasIndex("Indicator")
                         .HasDatabaseName("ix_conditions_indicator");
 
@@ -136,6 +143,91 @@ namespace TradingStrategyAPI.Database.Migrations
                         .HasDatabaseName("ix_conditions_strategy_id");
 
                     b.ToTable("conditions");
+                });
+
+            modelBuilder.Entity("TradingStrategyAPI.Models.CustomIndicator", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("Formula")
+                        .HasColumnType("text")
+                        .HasColumnName("formula");
+
+                    b.Property<bool>("IsPublic")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_public");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Parameters")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("parameters");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<int>("UserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_custom_indicators_created_at");
+
+                    b.HasIndex("IsPublic")
+                        .HasDatabaseName("ix_custom_indicators_is_public");
+
+                    b.HasIndex("Type")
+                        .HasDatabaseName("ix_custom_indicators_type");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_custom_indicators_user_id");
+
+                    b.HasIndex("UserId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_custom_indicators_user_id_name");
+
+                    b.ToTable("custom_indicators");
                 });
 
             modelBuilder.Entity("TradingStrategyAPI.Models.StopLoss", b =>
@@ -207,6 +299,22 @@ namespace TradingStrategyAPI.Database.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_archived");
+
+                    b.Property<bool>("IsFavorite")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_favorite");
+
+                    b.Property<DateTime?>("LastBacktestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_backtested_at");
+
                     b.Property<int>("MaxPositions")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -219,6 +327,14 @@ namespace TradingStrategyAPI.Database.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
+
+                    b.Property<int?>("ParentStrategyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("parent_strategy_id");
+
                     b.Property<int>("PositionSize")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -229,6 +345,10 @@ namespace TradingStrategyAPI.Database.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("symbol");
+
+                    b.Property<string[]>("Tags")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("tags");
 
                     b.Property<string>("Timeframe")
                         .HasMaxLength(10)
@@ -251,6 +371,12 @@ namespace TradingStrategyAPI.Database.Migrations
                         .HasDefaultValue(1)
                         .HasColumnName("version");
 
+                    b.Property<int>("VersionNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("version_number");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt")
@@ -259,10 +385,63 @@ namespace TradingStrategyAPI.Database.Migrations
                     b.HasIndex("IsActive")
                         .HasDatabaseName("ix_strategies_is_active");
 
+                    b.HasIndex("IsArchived")
+                        .HasDatabaseName("ix_strategies_is_archived");
+
+                    b.HasIndex("IsFavorite")
+                        .HasDatabaseName("ix_strategies_is_favorite");
+
+                    b.HasIndex("LastBacktestedAt")
+                        .HasDatabaseName("ix_strategies_last_backtested_at");
+
+                    b.HasIndex("ParentStrategyId")
+                        .HasDatabaseName("ix_strategies_parent_strategy_id");
+
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_strategies_user_id");
 
                     b.ToTable("strategies");
+                });
+
+            modelBuilder.Entity("TradingStrategyAPI.Models.StrategyComparison", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<int[]>("StrategyIds")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("strategy_ids");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_strategy_comparisons_created_at");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_strategy_comparisons_user_id");
+
+                    b.ToTable("strategy_comparisons");
                 });
 
             modelBuilder.Entity("TradingStrategyAPI.Models.StrategyError", b =>
@@ -408,6 +587,49 @@ namespace TradingStrategyAPI.Database.Migrations
                         .HasDatabaseName("ix_strategy_results_strategy_id_created_at");
 
                     b.ToTable("strategy_results");
+                });
+
+            modelBuilder.Entity("TradingStrategyAPI.Models.StrategyTag", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)")
+                        .HasColumnName("color");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_strategy_tags_user_id");
+
+                    b.HasIndex("UserId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_strategy_tags_user_id_name");
+
+                    b.ToTable("strategy_tags");
                 });
 
             modelBuilder.Entity("TradingStrategyAPI.Models.TakeProfit", b =>
@@ -693,13 +915,31 @@ namespace TradingStrategyAPI.Database.Migrations
 
             modelBuilder.Entity("TradingStrategyAPI.Models.Condition", b =>
                 {
+                    b.HasOne("TradingStrategyAPI.Models.CustomIndicator", "CustomIndicator")
+                        .WithMany()
+                        .HasForeignKey("CustomIndicatorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("TradingStrategyAPI.Models.Strategy", "Strategy")
                         .WithMany("EntryConditions")
                         .HasForeignKey("StrategyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("CustomIndicator");
+
                     b.Navigation("Strategy");
+                });
+
+            modelBuilder.Entity("TradingStrategyAPI.Models.CustomIndicator", b =>
+                {
+                    b.HasOne("TradingStrategyAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TradingStrategyAPI.Models.StopLoss", b =>
@@ -715,8 +955,26 @@ namespace TradingStrategyAPI.Database.Migrations
 
             modelBuilder.Entity("TradingStrategyAPI.Models.Strategy", b =>
                 {
+                    b.HasOne("TradingStrategyAPI.Models.Strategy", "ParentStrategy")
+                        .WithMany("Versions")
+                        .HasForeignKey("ParentStrategyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("TradingStrategyAPI.Models.User", "User")
                         .WithMany("Strategies")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ParentStrategy");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TradingStrategyAPI.Models.StrategyComparison", b =>
+                {
+                    b.HasOne("TradingStrategyAPI.Models.User", "User")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -743,6 +1001,17 @@ namespace TradingStrategyAPI.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Strategy");
+                });
+
+            modelBuilder.Entity("TradingStrategyAPI.Models.StrategyTag", b =>
+                {
+                    b.HasOne("TradingStrategyAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TradingStrategyAPI.Models.TakeProfit", b =>
@@ -787,6 +1056,8 @@ namespace TradingStrategyAPI.Database.Migrations
                     b.Navigation("StopLoss");
 
                     b.Navigation("TakeProfit");
+
+                    b.Navigation("Versions");
                 });
 
             modelBuilder.Entity("TradingStrategyAPI.Models.StrategyResult", b =>

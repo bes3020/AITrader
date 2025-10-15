@@ -69,6 +69,21 @@ public class TradingDbContext : DbContext
     public DbSet<StrategyError> StrategyErrors { get; set; }
 
     /// <summary>
+    /// User-defined tags for organizing strategies.
+    /// </summary>
+    public DbSet<StrategyTag> StrategyTags { get; set; }
+
+    /// <summary>
+    /// Saved strategy comparisons for side-by-side analysis.
+    /// </summary>
+    public DbSet<StrategyComparison> StrategyComparisons { get; set; }
+
+    /// <summary>
+    /// Custom indicators created by users.
+    /// </summary>
+    public DbSet<CustomIndicator> CustomIndicators { get; set; }
+
+    /// <summary>
     /// Configures entity models and their relationships using Fluent API.
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -85,6 +100,9 @@ public class TradingDbContext : DbContext
         ConfigureTradeResult(modelBuilder);
         ConfigureTradeAnalysis(modelBuilder);
         ConfigureStrategyError(modelBuilder);
+        ConfigureStrategyTag(modelBuilder);
+        ConfigureStrategyComparison(modelBuilder);
+        ConfigureCustomIndicator(modelBuilder);
     }
 
     /// <summary>
@@ -152,6 +170,34 @@ public class TradingDbContext : DbContext
 
             entity.Property(e => e.PositionSize)
                 .HasDefaultValue(1);
+
+            entity.Property(e => e.VersionNumber)
+                .HasDefaultValue(1);
+
+            entity.Property(e => e.IsFavorite)
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.IsArchived)
+                .HasDefaultValue(false);
+
+            // Additional indexes for new fields
+            entity.HasIndex(e => e.ParentStrategyId)
+                .HasDatabaseName("ix_strategies_parent_strategy_id");
+
+            entity.HasIndex(e => e.IsFavorite)
+                .HasDatabaseName("ix_strategies_is_favorite");
+
+            entity.HasIndex(e => e.IsArchived)
+                .HasDatabaseName("ix_strategies_is_archived");
+
+            entity.HasIndex(e => e.LastBacktestedAt)
+                .HasDatabaseName("ix_strategies_last_backtested_at");
+
+            // Self-referencing relationship for versioning
+            entity.HasOne(e => e.ParentStrategy)
+                .WithMany(e => e.Versions)
+                .HasForeignKey(e => e.ParentStrategyId)
+                .OnDelete(DeleteBehavior.Restrict); // Don't cascade delete versions
 
             // One-to-many relationship with Conditions
             entity.HasMany(e => e.EntryConditions)
@@ -229,6 +275,16 @@ public class TradingDbContext : DbContext
             // Index on Indicator for analysis queries
             entity.HasIndex(e => e.Indicator)
                 .HasDatabaseName("ix_conditions_indicator");
+
+            // Index on CustomIndicatorId
+            entity.HasIndex(e => e.CustomIndicatorId)
+                .HasDatabaseName("ix_conditions_custom_indicator_id");
+
+            // Relationship with CustomIndicator
+            entity.HasOne(e => e.CustomIndicator)
+                .WithMany()
+                .HasForeignKey(e => e.CustomIndicatorId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 
@@ -442,5 +498,112 @@ public class TradingDbContext : DbContext
         {
             ((Strategy)entry.Entity).UpdatedAt = DateTime.UtcNow;
         }
+    }
+
+    /// <summary>
+    /// Configures the StrategyTag entity.
+    /// </summary>
+    private void ConfigureStrategyTag(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<StrategyTag>(entity =>
+        {
+            // Primary key
+            entity.HasKey(e => e.Id);
+
+            // Indexes
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("ix_strategy_tags_user_id");
+
+            entity.HasIndex(e => new { e.UserId, e.Name })
+                .IsUnique()
+                .HasDatabaseName("ix_strategy_tags_user_id_name");
+
+            // Default value for CreatedAt
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("NOW()");
+
+            // Relationship with User
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    /// <summary>
+    /// Configures the StrategyComparison entity.
+    /// </summary>
+    private void ConfigureStrategyComparison(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<StrategyComparison>(entity =>
+        {
+            // Primary key
+            entity.HasKey(e => e.Id);
+
+            // Indexes
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("ix_strategy_comparisons_user_id");
+
+            entity.HasIndex(e => e.CreatedAt)
+                .HasDatabaseName("ix_strategy_comparisons_created_at");
+
+            // Default value for CreatedAt
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("NOW()");
+
+            // Relationship with User
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    /// <summary>
+    /// Configures the CustomIndicator entity.
+    /// </summary>
+    private void ConfigureCustomIndicator(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CustomIndicator>(entity =>
+        {
+            // Primary key
+            entity.HasKey(e => e.Id);
+
+            // Indexes
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("ix_custom_indicators_user_id");
+
+            entity.HasIndex(e => new { e.UserId, e.Name })
+                .IsUnique()
+                .HasDatabaseName("ix_custom_indicators_user_id_name");
+
+            entity.HasIndex(e => e.Type)
+                .HasDatabaseName("ix_custom_indicators_type");
+
+            entity.HasIndex(e => e.IsPublic)
+                .HasDatabaseName("ix_custom_indicators_is_public");
+
+            entity.HasIndex(e => e.CreatedAt)
+                .HasDatabaseName("ix_custom_indicators_created_at");
+
+            // Default values
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("NOW()");
+
+            entity.Property(e => e.IsPublic)
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.UserId)
+                .HasDefaultValue(1);
+
+            // Relationship with User
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }

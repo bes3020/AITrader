@@ -18,18 +18,10 @@ export default function Home() {
               Trading Strategy Analyzer
             </h1>
           </div>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-6">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Analyze your trading strategies with AI-powered insights. Describe your strategy in plain English
             and get instant backtesting results with detailed performance metrics.
           </p>
-          <Button
-            onClick={() => router.push("/history")}
-            variant="outline"
-            size="lg"
-          >
-            <History className="mr-2 h-5 w-5" />
-            View Strategy History
-          </Button>
         </div>
 
         {/* Strategy Form */}

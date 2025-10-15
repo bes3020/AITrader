@@ -65,11 +65,25 @@ public class Condition
     public int StrategyId { get; set; }
 
     /// <summary>
+    /// Foreign key to a custom indicator (if using custom indicator).
+    /// If set, this condition uses the custom indicator instead of the built-in indicator field.
+    /// </summary>
+    [Column("custom_indicator_id")]
+    public int? CustomIndicatorId { get; set; }
+
+    /// <summary>
     /// Navigation property to the parent strategy.
     /// </summary>
     [ForeignKey(nameof(StrategyId))]
     [JsonIgnore] // Prevent circular reference in API responses
     public Strategy? Strategy { get; set; }
+
+    /// <summary>
+    /// Navigation property to the custom indicator (if using one).
+    /// </summary>
+    [ForeignKey(nameof(CustomIndicatorId))]
+    [JsonIgnore]
+    public CustomIndicator? CustomIndicator { get; set; }
 
     /// <summary>
     /// Validates that the value format is correct based on its type.

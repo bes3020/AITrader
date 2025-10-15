@@ -24,6 +24,7 @@ public class StrategyController : ControllerBase
     private readonly IStrategyScanner _scanner;
     private readonly IResultsAnalyzer _analyzer;
     private readonly ITradeAnalyzer _tradeAnalyzer;
+    private readonly IStrategyManager _strategyManager;
     private readonly TradingDbContext _context;
     private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<StrategyController> _logger;
@@ -35,6 +36,7 @@ public class StrategyController : ControllerBase
         IStrategyScanner scanner,
         IResultsAnalyzer analyzer,
         ITradeAnalyzer tradeAnalyzer,
+        IStrategyManager strategyManager,
         TradingDbContext context,
         IConnectionMultiplexer redis,
         ILogger<StrategyController> logger)
@@ -43,6 +45,7 @@ public class StrategyController : ControllerBase
         _scanner = scanner;
         _analyzer = analyzer;
         _tradeAnalyzer = tradeAnalyzer;
+        _strategyManager = strategyManager;
         _context = context;
         _redis = redis;
         _logger = logger;
@@ -973,6 +976,303 @@ public class StrategyController : ControllerBase
             return new List<BarData>();
         }
     }
+
+    // ==================== CRUD OPERATIONS ====================
+
+    /// <summary>
+    /// Creates a new strategy.
+    /// POST /api/strategy
+    /// </summary>
+    [HttpPost]
+    public async Task<ActionResult<StrategyDetailResponse>> CreateStrategy([FromBody] CreateStrategyRequest request)
+    {
+        try
+        {
+            var result = await _strategyManager.CreateStrategyAsync(request);
+            return CreatedAtAction(nameof(GetStrategyDetail), new { id = result.Id }, result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating strategy");
+            return StatusCode(500, new { message = "Failed to create strategy" });
+        }
+    }
+
+    /// <summary>
+    /// Gets detailed strategy information.
+    /// GET /api/strategy/{id}/detail
+    /// </summary>
+    [HttpGet("{id}/detail")]
+    public async Task<ActionResult<StrategyDetailResponse>> GetStrategyDetail(int id)
+    {
+        try
+        {
+            var result = await _strategyManager.GetStrategyAsync(id);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = $"Strategy {id} not found" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving strategy {Id}", id);
+            return StatusCode(500, new { message = "Failed to retrieve strategy" });
+        }
+    }
+
+    /// <summary>
+    /// Updates an existing strategy.
+    /// PUT /api/strategy/{id}
+    /// </summary>
+    [HttpPut("{id}")]
+    public async Task<ActionResult<StrategyDetailResponse>> UpdateStrategy(int id, [FromBody] UpdateStrategyRequest request)
+    {
+        try
+        {
+            var result = await _strategyManager.UpdateStrategyAsync(id, request);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = $"Strategy {id} not found" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating strategy {Id}", id);
+            return StatusCode(500, new { message = "Failed to update strategy" });
+        }
+    }
+
+    /// <summary>
+    /// Deletes (archives) a strategy.
+    /// DELETE /api/strategy/{id}
+    /// </summary>
+    [HttpDelete("{id}")]
+    public async Task<ActionResult> DeleteStrategy(int id)
+    {
+        try
+        {
+            await _strategyManager.DeleteStrategyAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = $"Strategy {id} not found" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting strategy {Id}", id);
+            return StatusCode(500, new { message = "Failed to delete strategy" });
+        }
+    }
+
+    /// <summary>
+    /// Duplicates a strategy.
+    /// POST /api/strategy/{id}/duplicate
+    /// </summary>
+    [HttpPost("{id}/duplicate")]
+    public async Task<ActionResult<StrategyDetailResponse>> DuplicateStrategy(int id, [FromBody] DuplicateRequest request)
+    {
+        try
+        {
+            var result = await _strategyManager.DuplicateStrategyAsync(id, request.NewName);
+            return CreatedAtAction(nameof(GetStrategyDetail), new { id = result.Id }, result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = $"Strategy {id} not found" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error duplicating strategy {Id}", id);
+            return StatusCode(500, new { message = "Failed to duplicate strategy" });
+        }
+    }
+
+    /// <summary>
+    /// Creates a new version of a strategy.
+    /// POST /api/strategy/{id}/version
+    /// </summary>
+    [HttpPost("{id}/version")]
+    public async Task<ActionResult<StrategyDetailResponse>> CreateVersion(int id, [FromBody] CreateVersionRequest request)
+    {
+        try
+        {
+            var result = await _strategyManager.CreateVersionAsync(id, request);
+            return CreatedAtAction(nameof(GetStrategyDetail), new { id = result.Id }, result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = $"Strategy {id} not found" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating version for strategy {Id}", id);
+            return StatusCode(500, new { message = "Failed to create version" });
+        }
+    }
+
+    /// <summary>
+    /// Gets all versions of a strategy.
+    /// GET /api/strategy/{id}/versions
+    /// </summary>
+    [HttpGet("{id}/versions")]
+    public async Task<ActionResult<List<StrategyVersionSummary>>> GetVersions(int id)
+    {
+        try
+        {
+            var result = await _strategyManager.GetVersionsAsync(id);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = $"Strategy {id} not found" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving versions for strategy {Id}", id);
+            return StatusCode(500, new { message = "Failed to retrieve versions" });
+        }
+    }
+
+    /// <summary>
+    /// Toggles favorite status.
+    /// POST /api/strategy/{id}/favorite
+    /// </summary>
+    [HttpPost("{id}/favorite")]
+    public async Task<ActionResult<object>> ToggleFavorite(int id)
+    {
+        try
+        {
+            var isFavorite = await _strategyManager.ToggleFavoriteAsync(id);
+            return Ok(new { isFavorite });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = $"Strategy {id} not found" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error toggling favorite for strategy {Id}", id);
+            return StatusCode(500, new { message = "Failed to toggle favorite" });
+        }
+    }
+
+    /// <summary>
+    /// Archives or unarchives a strategy.
+    /// POST /api/strategy/{id}/archive
+    /// </summary>
+    [HttpPost("{id}/archive")]
+    public async Task<ActionResult> ArchiveStrategy(int id, [FromBody] ArchiveRequest request)
+    {
+        try
+        {
+            await _strategyManager.ArchiveStrategyAsync(id, request.Archive);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = $"Strategy {id} not found" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error archiving strategy {Id}", id);
+            return StatusCode(500, new { message = "Failed to archive strategy" });
+        }
+    }
+
+    /// <summary>
+    /// Exports a strategy to JSON.
+    /// POST /api/strategy/{id}/export
+    /// </summary>
+    [HttpPost("{id}/export")]
+    public async Task<ActionResult<StrategyExportFormat>> ExportStrategy(int id)
+    {
+        try
+        {
+            var result = await _strategyManager.ExportStrategyAsync(id);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = $"Strategy {id} not found" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exporting strategy {Id}", id);
+            return StatusCode(500, new { message = "Failed to export strategy" });
+        }
+    }
+
+    /// <summary>
+    /// Imports a strategy from JSON.
+    /// POST /api/strategy/import
+    /// </summary>
+    [HttpPost("import")]
+    public async Task<ActionResult<StrategyDetailResponse>> ImportStrategy([FromBody] ImportStrategyRequest request)
+    {
+        try
+        {
+            var result = await _strategyManager.ImportStrategyAsync(request);
+            return CreatedAtAction(nameof(GetStrategyDetail), new { id = result.Id }, result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error importing strategy");
+            return StatusCode(500, new { message = "Failed to import strategy" });
+        }
+    }
+
+    /// <summary>
+    /// Searches strategies with filters.
+    /// POST /api/strategy/search
+    /// </summary>
+    [HttpPost("search")]
+    public async Task<ActionResult<SearchStrategiesResponse>> SearchStrategies([FromBody] SearchStrategiesRequest request)
+    {
+        try
+        {
+            var result = await _strategyManager.SearchStrategiesAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching strategies");
+            return StatusCode(500, new { message = "Failed to search strategies" });
+        }
+    }
+
+    /// <summary>
+    /// Compares multiple strategies.
+    /// POST /api/strategy/compare
+    /// </summary>
+    [HttpPost("compare")]
+    public async Task<ActionResult<StrategyComparisonResponse>> CompareStrategies([FromBody] CompareStrategiesRequest request)
+    {
+        try
+        {
+            var result = await _strategyManager.CompareStrategiesAsync(request);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error comparing strategies");
+            return StatusCode(500, new { message = "Failed to compare strategies" });
+        }
+    }
+
+    // Helper request DTOs for endpoints that need simple parameters
+    public class DuplicateRequest { public required string NewName { get; set; } }
+    public class ArchiveRequest { public bool Archive { get; set; } }
 
     /// <summary>
     /// Computes SHA256 hash of a string for cache keys.

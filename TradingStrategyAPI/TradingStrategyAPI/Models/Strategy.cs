@@ -91,6 +91,49 @@ public class Strategy
     public int Version { get; set; } = 1;
 
     /// <summary>
+    /// Foreign key to parent strategy for versioning.
+    /// Null if this is the original strategy.
+    /// </summary>
+    [Column("parent_strategy_id")]
+    public int? ParentStrategyId { get; set; }
+
+    /// <summary>
+    /// Version number within the version chain.
+    /// </summary>
+    [Column("version_number")]
+    public int VersionNumber { get; set; } = 1;
+
+    /// <summary>
+    /// Tags for organizing and filtering strategies (stored as JSONB).
+    /// </summary>
+    [Column("tags", TypeName = "jsonb")]
+    public string[]? Tags { get; set; }
+
+    /// <summary>
+    /// Additional notes about the strategy.
+    /// </summary>
+    [Column("notes")]
+    public string? Notes { get; set; }
+
+    /// <summary>
+    /// Indicates if this strategy is marked as favorite.
+    /// </summary>
+    [Column("is_favorite")]
+    public bool IsFavorite { get; set; } = false;
+
+    /// <summary>
+    /// Timestamp when the strategy was last backtested.
+    /// </summary>
+    [Column("last_backtested_at")]
+    public DateTime? LastBacktestedAt { get; set; }
+
+    /// <summary>
+    /// Indicates if this strategy is archived.
+    /// </summary>
+    [Column("is_archived")]
+    public bool IsArchived { get; set; } = false;
+
+    /// <summary>
     /// Maximum number of concurrent positions allowed.
     /// </summary>
     [Column("max_positions")]
@@ -109,6 +152,18 @@ public class Strategy
     /// </summary>
     [ForeignKey(nameof(UserId))]
     public User? User { get; set; }
+
+    /// <summary>
+    /// Navigation property to the parent strategy (for versions).
+    /// </summary>
+    [ForeignKey(nameof(ParentStrategyId))]
+    public Strategy? ParentStrategy { get; set; }
+
+    /// <summary>
+    /// Navigation property to child strategy versions.
+    /// </summary>
+    [InverseProperty(nameof(ParentStrategy))]
+    public ICollection<Strategy> Versions { get; set; } = new List<Strategy>();
 
     /// <summary>
     /// List of entry conditions that must be met to enter a trade.

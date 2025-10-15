@@ -116,6 +116,12 @@ builder.Services.AddScoped<IStrategyScanner, StrategyScanner>();
 builder.Services.AddScoped<IResultsAnalyzer, ResultsAnalyzer>();
 builder.Services.AddScoped<ITradeAnalyzer, TradeAnalyzer>();
 
+// Register strategy manager for CRUD operations
+builder.Services.AddScoped<IStrategyManager, StrategyManager>();
+
+// Register indicator service
+builder.Services.AddScoped<IIndicatorService, IndicatorService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline

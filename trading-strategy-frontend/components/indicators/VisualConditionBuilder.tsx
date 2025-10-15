@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Plus, AlertCircle } from "lucide-react";
+import { X, Plus, AlertCircle, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -20,12 +20,14 @@ import {
   getIndicator,
   type IndicatorDefinition,
 } from "@/lib/indicator-definitions";
+import { useMyIndicators } from "@/lib/hooks/useIndicators";
 
 export interface Condition {
   id: string;
   indicator: string;
   operator: string;
   value: string;
+  customIndicatorId?: number; // Add support for custom indicators
 }
 
 interface VisualConditionBuilderProps {
@@ -123,6 +125,9 @@ export function VisualConditionBuilder({
 }: VisualConditionBuilderProps) {
   const [warnings, setWarnings] = useState<string[]>([]);
 
+  // Fetch custom indicators
+  const { data: customIndicators = [], isLoading: isLoadingCustom } = useMyIndicators();
+
   const addCondition = () => {
     const newCondition: Condition = {
       id: `condition-${Date.now()}`,
@@ -142,12 +147,28 @@ export function VisualConditionBuilder({
     field: keyof Condition,
     value: string
   ) => {
-    onChange(
-      conditions.map((c) => (c.id === id ? { ...c, [field]: value } : c))
-    );
+    const updatedConditions = conditions.map((c) => {
+      if (c.id === id) {
+        const updated = { ...c, [field]: value };
+
+        // If updating indicator field and it's a custom indicator, store the ID
+        if (field === "indicator" && value.startsWith("custom-")) {
+          const customId = parseInt(value.replace("custom-", ""), 10);
+          updated.customIndicatorId = customId;
+        } else if (field === "indicator") {
+          // Built-in indicator, clear custom indicator ID
+          updated.customIndicatorId = undefined;
+        }
+
+        return updated;
+      }
+      return c;
+    });
+
+    onChange(updatedConditions);
 
     // Check for warnings
-    checkForWarnings([...conditions.map((c) => (c.id === id ? { ...c, [field]: value } : c))]);
+    checkForWarnings(updatedConditions);
   };
 
   const checkForWarnings = (conds: Condition[]) => {
@@ -224,7 +245,15 @@ export function VisualConditionBuilder({
     <div className="space-y-4">
       {/* Conditions List */}
       {conditions.map((condition, index) => {
-        const indicatorDef = condition.indicator
+        // Check if this is a custom indicator
+        const isCustomIndicator = condition.indicator?.startsWith("custom-");
+        const customIndicator = isCustomIndicator
+          ? customIndicators.find(
+              (ci) => ci.id === condition.customIndicatorId
+            )
+          : null;
+
+        const indicatorDef = !isCustomIndicator && condition.indicator
           ? getIndicator(condition.indicator)
           : null;
 
@@ -255,6 +284,28 @@ export function VisualConditionBuilder({
                         <SelectValue placeholder="Select indicator..." />
                       </SelectTrigger>
                       <SelectContent>
+                        {/* Custom Indicators Section */}
+                        {customIndicators.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                              <Code className="h-3 w-3" />
+                              My Custom Indicators
+                            </div>
+                            {customIndicators.map((customInd) => (
+                              <SelectItem
+                                key={`custom-${customInd.id}`}
+                                value={`custom-${customInd.id}`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Code className="h-3 w-3 text-primary" />
+                                  {customInd.displayName}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Built-in Indicators */}
                         {Object.entries(INDICATOR_GROUPS).map(
                           ([groupName, indicators]) => (
                             <div key={groupName}>
@@ -291,6 +342,12 @@ export function VisualConditionBuilder({
                         }}
                       >
                         {indicatorDef.category}
+                      </Badge>
+                    )}
+                    {customIndicator && (
+                      <Badge variant="outline" className="text-xs flex items-center gap-1">
+                        <Code className="h-3 w-3" />
+                        Custom: {customIndicator.type}
                       </Badge>
                     )}
                   </div>
@@ -361,6 +418,23 @@ export function VisualConditionBuilder({
         <Plus className="mr-2 h-4 w-4" />
         Add Condition
       </Button>
+
+      {/* Empty State with Custom Indicators Link */}
+      {conditions.length === 0 && (
+        <div className="text-center py-6 bg-muted/30 rounded-lg">
+          <p className="text-sm text-muted-foreground mb-2">
+            No conditions added yet. Start by adding an entry condition above.
+          </p>
+          {customIndicators.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Don't see the indicator you need?{" "}
+              <a href="/indicators" className="text-primary hover:underline">
+                Create a custom indicator
+              </a>
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Warnings */}
       {warnings.length > 0 && (

@@ -89,6 +89,7 @@ export interface Condition {
   /**
    * The indicator to evaluate.
    * Valid values: "price", "volume", "vwap", "rsi", "atr", "ema9", "ema20", "ema50", "macd", "bb_upper", "bb_lower", "adx", "stoch"
+   * Or "custom-{id}" for custom indicators.
    */
   indicator: string;
 
@@ -114,6 +115,12 @@ export interface Condition {
    * Foreign key to the parent strategy.
    */
   strategyId?: number;
+
+  /**
+   * Foreign key to a custom indicator (if using custom indicator).
+   * If set, this condition uses the custom indicator instead of the built-in indicator field.
+   */
+  customIndicatorId?: number | null;
 }
 
 /**
@@ -422,6 +429,41 @@ export interface Strategy {
   positionSize?: number;
 
   /**
+   * Parent strategy ID for version chains (null for root strategies).
+   */
+  parentStrategyId?: number | null;
+
+  /**
+   * Version number in the version chain (1 for root, 2+ for versions).
+   */
+  versionNumber?: number;
+
+  /**
+   * Tags for organizing strategies (stored as JSONB array).
+   */
+  tags?: string[] | null;
+
+  /**
+   * User notes about the strategy.
+   */
+  notes?: string | null;
+
+  /**
+   * Whether this strategy is marked as a favorite.
+   */
+  isFavorite?: boolean;
+
+  /**
+   * Timestamp when this strategy was last backtested.
+   */
+  lastBacktestedAt?: string | null;
+
+  /**
+   * Whether this strategy is archived (soft deleted).
+   */
+  isArchived?: boolean;
+
+  /**
    * List of entry conditions that must be met to enter a trade.
    * All conditions are typically combined with AND logic.
    */
@@ -441,6 +483,16 @@ export interface Strategy {
    * Historical results from backtests of this strategy.
    */
   results?: StrategyResult[];
+
+  /**
+   * Parent strategy (for version chains).
+   */
+  parentStrategy?: Strategy | null;
+
+  /**
+   * Child versions of this strategy.
+   */
+  versions?: Strategy[];
 }
 
 /**

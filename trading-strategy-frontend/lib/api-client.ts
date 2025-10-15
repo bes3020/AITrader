@@ -322,6 +322,391 @@ class TradingStrategyApiClient {
   }
 
   /**
+   * Gets detailed strategy information
+   * @param id - Strategy ID
+   * @returns Detailed strategy with versions and results
+   */
+  public async getStrategyDetail(id: number): Promise<any> {
+    try {
+      console.log("[API Client] Fetching strategy detail:", id);
+      const response = await this.client.get(`/api/strategy/${id}/detail`);
+      console.log("[API Client] Strategy detail retrieved:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] getStrategyDetail failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Updates an existing strategy
+   * @param id - Strategy ID
+   * @param data - Update data
+   * @returns Updated strategy
+   */
+  public async updateStrategy(id: number, data: any): Promise<any> {
+    try {
+      console.log("[API Client] Updating strategy:", id);
+      const response = await this.client.put(`/api/strategy/${id}`, data);
+      console.log("[API Client] Strategy updated:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] updateStrategy failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Duplicates a strategy
+   * @param id - Strategy ID to duplicate
+   * @param newName - Name for the duplicate
+   * @returns Duplicated strategy
+   */
+  public async duplicateStrategy(id: number, newName: string): Promise<any> {
+    try {
+      console.log("[API Client] Duplicating strategy:", id, newName);
+      const response = await this.client.post(`/api/strategy/${id}/duplicate`, { newName });
+      console.log("[API Client] Strategy duplicated:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] duplicateStrategy failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a new version of a strategy
+   * @param id - Parent strategy ID
+   * @param data - Version data
+   * @returns New version
+   */
+  public async createVersion(id: number, data: any): Promise<any> {
+    try {
+      console.log("[API Client] Creating version:", id);
+      const response = await this.client.post(`/api/strategy/${id}/version`, data);
+      console.log("[API Client] Version created:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] createVersion failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets all versions of a strategy
+   * @param id - Strategy ID
+   * @returns List of versions
+   */
+  public async getVersions(id: number): Promise<any[]> {
+    try {
+      console.log("[API Client] Fetching versions:", id);
+      const response = await this.client.get(`/api/strategy/${id}/versions`);
+      console.log("[API Client] Versions retrieved:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] getVersions failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Toggles favorite status
+   * @param id - Strategy ID
+   * @returns New favorite status
+   */
+  public async toggleFavorite(id: number): Promise<{ isFavorite: boolean }> {
+    try {
+      console.log("[API Client] Toggling favorite:", id);
+      const response = await this.client.post(`/api/strategy/${id}/favorite`);
+      console.log("[API Client] Favorite toggled:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] toggleFavorite failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Archives or unarchives a strategy
+   * @param id - Strategy ID
+   * @param archive - True to archive, false to unarchive
+   */
+  public async archiveStrategy(id: number, archive: boolean): Promise<void> {
+    try {
+      console.log("[API Client] Archiving strategy:", id, archive);
+      await this.client.post(`/api/strategy/${id}/archive`, { archive });
+      console.log("[API Client] Strategy archived:", id);
+    } catch (error) {
+      console.error("[API Client] archiveStrategy failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Exports a strategy to JSON
+   * @param id - Strategy ID
+   * @returns Export data
+   */
+  public async exportStrategy(id: number): Promise<any> {
+    try {
+      console.log("[API Client] Exporting strategy:", id);
+      const response = await this.client.post(`/api/strategy/${id}/export`);
+      console.log("[API Client] Strategy exported:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] exportStrategy failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Imports a strategy from JSON
+   * @param data - Import data
+   * @returns Imported strategy
+   */
+  public async importStrategy(data: any): Promise<any> {
+    try {
+      console.log("[API Client] Importing strategy");
+      const response = await this.client.post("/api/strategy/import", data);
+      console.log("[API Client] Strategy imported:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] importStrategy failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Searches strategies with filters
+   * @param params - Search parameters
+   * @returns Search results
+   */
+  public async searchStrategies(params: any): Promise<any> {
+    try {
+      console.log("[API Client] Searching strategies:", params);
+      const response = await this.client.post("/api/strategy/search", params);
+      console.log("[API Client] Search results:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] searchStrategies failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Compares multiple strategies
+   * @param strategyIds - Array of strategy IDs to compare
+   * @returns Comparison data
+   */
+  public async compareStrategies(strategyIds: number[]): Promise<any> {
+    try {
+      console.log("[API Client] Comparing strategies:", strategyIds);
+      const response = await this.client.post("/api/strategy/compare", { strategyIds });
+      console.log("[API Client] Comparison data:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] compareStrategies failed:", error);
+      throw error;
+    }
+  }
+
+  // ==================== INDICATOR MANAGEMENT ====================
+
+  /**
+   * Gets all built-in indicator definitions
+   * @returns List of built-in indicators
+   */
+  public async getBuiltInIndicators(): Promise<any[]> {
+    try {
+      console.log("[API Client] Fetching built-in indicators");
+      const response = await this.client.get("/api/indicator/built-in");
+      console.log("[API Client] Built-in indicators retrieved:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] getBuiltInIndicators failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets user's custom indicators
+   * @returns List of user's indicators
+   */
+  public async getMyIndicators(): Promise<any[]> {
+    try {
+      console.log("[API Client] Fetching my indicators");
+      const response = await this.client.get("/api/indicator/my");
+      console.log("[API Client] My indicators retrieved:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] getMyIndicators failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets public indicators
+   * @returns List of public indicators
+   */
+  public async getPublicIndicators(): Promise<any[]> {
+    try {
+      console.log("[API Client] Fetching public indicators");
+      const response = await this.client.get("/api/indicator/public");
+      console.log("[API Client] Public indicators retrieved:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] getPublicIndicators failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a new custom indicator
+   * @param data - Indicator creation data
+   * @returns Created indicator
+   */
+  public async createIndicator(data: any): Promise<any> {
+    try {
+      console.log("[API Client] Creating indicator:", data);
+      const response = await this.client.post("/api/indicator", data);
+      console.log("[API Client] Indicator created:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] createIndicator failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Updates an indicator
+   * @param id - Indicator ID
+   * @param data - Update data
+   * @returns Updated indicator
+   */
+  public async updateIndicator(id: number, data: any): Promise<any> {
+    try {
+      console.log("[API Client] Updating indicator:", id, data);
+      const response = await this.client.put(`/api/indicator/${id}`, data);
+      console.log("[API Client] Indicator updated:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] updateIndicator failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deletes an indicator
+   * @param id - Indicator ID
+   */
+  public async deleteIndicator(id: number): Promise<void> {
+    try {
+      console.log("[API Client] Deleting indicator:", id);
+      await this.client.delete(`/api/indicator/${id}`);
+      console.log("[API Client] Indicator deleted:", id);
+    } catch (error) {
+      console.error("[API Client] deleteIndicator failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculates indicator values for a date range
+   * @param id - Indicator ID
+   * @param symbol - Trading symbol
+   * @param startDate - Start date
+   * @param endDate - End date
+   * @returns Calculated values
+   */
+  public async calculateIndicator(
+    id: number,
+    symbol: string,
+    startDate: string,
+    endDate: string
+  ): Promise<any> {
+    try {
+      console.log("[API Client] Calculating indicator:", id, symbol);
+      const response = await this.client.get(`/api/indicator/${id}/calculate`, {
+        params: { symbol, startDate, endDate },
+      });
+      console.log("[API Client] Indicator calculated:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] calculateIndicator failed:", error);
+      throw error;
+    }
+  }
+
+  // ==================== TAG MANAGEMENT ====================
+
+  /**
+   * Gets all tags
+   * @returns List of tags
+   */
+  public async getTags(): Promise<any[]> {
+    try {
+      console.log("[API Client] Fetching tags");
+      const response = await this.client.get("/api/tag");
+      console.log("[API Client] Tags retrieved:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] getTags failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a new tag
+   * @param name - Tag name
+   * @param color - Tag color (hex)
+   * @returns Created tag
+   */
+  public async createTag(name: string, color: string): Promise<any> {
+    try {
+      console.log("[API Client] Creating tag:", name, color);
+      const response = await this.client.post("/api/tag", { name, color });
+      console.log("[API Client] Tag created:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] createTag failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Updates a tag
+   * @param id - Tag ID
+   * @param data - Update data
+   * @returns Updated tag
+   */
+  public async updateTag(id: number, data: { name?: string; color?: string }): Promise<any> {
+    try {
+      console.log("[API Client] Updating tag:", id, data);
+      const response = await this.client.put(`/api/tag/${id}`, data);
+      console.log("[API Client] Tag updated:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("[API Client] updateTag failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deletes a tag
+   * @param id - Tag ID
+   */
+  public async deleteTag(id: number): Promise<void> {
+    try {
+      console.log("[API Client] Deleting tag:", id);
+      await this.client.delete(`/api/tag/${id}`);
+      console.log("[API Client] Tag deleted:", id);
+    } catch (error) {
+      console.error("[API Client] deleteTag failed:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Gets a paginated list of trades for a strategy result
    * @param strategyId - Strategy ID
    * @param resultId - Strategy result ID
@@ -481,6 +866,7 @@ class TradingStrategyApiClient {
 const apiClient = new TradingStrategyApiClient();
 
 export default apiClient;
+export { apiClient };
 
 // Also export the class for testing purposes
 export { TradingStrategyApiClient };
